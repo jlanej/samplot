@@ -3,6 +3,7 @@ from __future__ import print_function
 import sys
 import numpy as np
 import matplotlib
+import matplotlib.cm
 
 matplotlib.use('Agg')
 import matplotlib.gridspec as gridspec
@@ -1475,7 +1476,7 @@ def set_plot_dimensions(start, end, sv_type, arg_plot_height, arg_plot_width,
     else:
         num_subplots = len(bams)
         if annotation_files:
-            num_subplots += .3 * len(annotation_files)
+            num_subplots += .5 * len(annotation_files)
         if transcript_file:
             num_subplots += .3
         plot_height = 2 + num_subplots
@@ -1896,6 +1897,12 @@ def plot_annotations(annotation_files, chrom, start, end,
         ax = matplotlib.pyplot.subplot(grid[ax_i])
         ax_i += 1
 
+        minAnn = float('inf')
+        maxAnn = float('-inf')
+
+        lines = []
+        vs=[]
+
         for row in itr:
             A = row.rstrip().split()
             t_start = max(range_min, int(A[1]))
@@ -1907,7 +1914,17 @@ def plot_annotations(annotation_files, chrom, start, end,
             if len(A) > 3:
                 try:
                     v = float(A[3])
-                    ax.plot(r, [0, 0], '-', color=str(v), lw=15)
+                    if v < minAnn:
+                        minAnn = v
+                    if v > maxAnn:
+                        maxAnn = v
+                    # print(r[0])
+                    vs.append(v)
+                    lines.append([r,[v,v]])
+                    # rs.append(r)
+                    # ax.plot(r, [v, v], '-', color=str(v), lw=1)
+                    # ax.plot(r[0], v)
+
                 except ValueError:
                     ax.plot(r, [0, 0], '-', color='black', lw=15)
                     if not hide_annotation_labels:
@@ -1919,19 +1936,32 @@ def plot_annotations(annotation_files, chrom, start, end,
             else:
                 ax.plot(r, [0, 0], '-', color='black', lw=5)
 
+        norm = matplotlib.colors.Normalize(vmin=minAnn, vmax=maxAnn)
+        cmap = matplotlib.cm.viridis
+        for row in lines:
+            ax.plot(row[0], row[1], '-',color=cmap(norm(row[1][0])), lw=1)
+
+
+
+        # ax
+        # ax.plot(lines, '-', color=str(v), lw=1)
         # set axis parameters
         ax.set_xlim([0, 1])
+        ax.set_ylim([minAnn, maxAnn])
+        print(minAnn)
+        print(maxAnn)
         ax.spines['top'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
-        ax.spines['left'].set_visible(False)
+        ax.spines['left'].set_visible(True)
         ax.spines['right'].set_visible(False)
         ax.set_title(os.path.basename(annotation_file), \
-                     fontsize=8, loc='left')
+                     fontsize=4, loc='right')
 
         ax.tick_params(axis='x', length=0)
-        ax.tick_params(axis='y', length=0)
+        ax.tick_params(axis='y', length=3)
         ax.set_xticklabels([])
-        ax.set_yticklabels([])
+        ax.tick_params(labelsize=3)
+        # ax.set_yticklabels([])
 
 
 def plot_transcript(transcript_file, chrom, start, end,
@@ -2070,7 +2100,7 @@ def create_gridspec(bams, transcript_file, annotation_files, sv_type):
             ratios[-1] = 9
 
     if annotation_files:
-        ratios += [.3] * len(annotation_files)
+        ratios += [3] * len(annotation_files)
     if transcript_file:
         ratios.append(2)
     return gridspec.GridSpec(num_ax, 1, height_ratios=ratios), num_ax
