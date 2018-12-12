@@ -51,8 +51,10 @@ CIGAR_MAP = {
 
 def calc_query_pos_from_cigar(cigar, strand):
     """Uses the CIGAR string to determine the query position of a read
+
     The cigar arg is a string like the following: 86M65S
     The strand arg is a boolean, True for forward strand and False for reverse
+
     Returns pair of ints for query start, end positions
     """
 
@@ -88,6 +90,7 @@ def sample_normal(max_depth, pairs, z):
 
     Selects max_depth reads
     Does not remove discordant pairs, those with insert distance greater than z stdevs from mean
+
     Returns downsampled pairs list
     """
 
@@ -183,11 +186,13 @@ def add_coverage(read, coverage, minq):
 
 class PairedEnd:
     """container of paired-end read info
+
     Contains start(int), end(int), strand(bool True=forward), MI (int molecular identifier), HP (int haplotype)
     """
 
     def __init__(self, start, end, is_reverse, MI_tag, HP_tag):
         """Create PairedEnd instance
+
         Genomic interval is defined by start and end integers
         Strand is opposite of is_reverse
         Molecular identifier and Haplotype are integers if present, else False
@@ -212,6 +217,7 @@ class PairedEnd:
 
 def add_pair_end(read, pairs, linked_reads):
     """adds a (mapped, primary, non-supplementary, and paired) read to the pairs list
+
     Pysam read is added as simpified PairedEnd instance to pairs
     Also added to linked_reads list if there is an associated MI tag
     """
@@ -258,11 +264,13 @@ def add_pair_end(read, pairs, linked_reads):
 
 class SplitRead:
     """container of split read info
+
     Contains start(int), end(int), strand(bool True=forward), query position (int), MI (int molecular identifier), HP (int haplotype)
     """
 
     def __init__(self, start, end, strand, query_pos, MI_tag=None, HP_tag=None):
         """Create SplitRead instance
+
         Genomic interval is defined by start, end, and query_pos integers
         Strand is opposite of is_reverse
         Molecular identifier and Haplotype are integers if present, else False
@@ -288,6 +296,7 @@ class SplitRead:
 
 def add_split(read, splits, bam_file, linked_reads):
     """adds a (primary, non-supplementary) read to the splits list
+
     Pysam read is added as simpified SplitRead instance to splits
     Also added to linked_reads list if there is an associated MI tag
     """
@@ -346,11 +355,13 @@ def add_split(read, splits, bam_file, linked_reads):
 
 class Alignment:
     """container of alignment info, from CIGAR string
+
     Contains start(int), end(int), strand(bool True=forward), query position (int)
     """
 
     def __init__(self, start, end, strand, query_position):
         """Create Alignment instance
+
         Genomic interval is defined by start, end, and query_pos integers
         Strand is bool (True for forward)
         """
@@ -372,11 +383,13 @@ class Alignment:
 
 class LongRead:
     """container of LongRead info
+
     Contains start(int), end(int), list of Alignments
     """
 
     def __init__(self, start, end, alignments):
         """Create LongRead instance
+
         Genomic interval is defined by start, end integers
         List of Alignments set by parameter
         """
@@ -396,9 +409,11 @@ class LongRead:
 
 def get_alignments_from_cigar(curr_pos, strand, cigartuples, reverse=False):
     """Breaks CIGAR string into individual Aignments
+
     Starting point within genome given by curr_pos and strand
     Set of CIGAR operations and lengths as pairs passed in as cigartuples
     Direction of alignment set to reverse with reverse boolean
+
     Return list of Alignments
     """
     alignments = []
@@ -426,6 +441,7 @@ def get_alignments_from_cigar(curr_pos, strand, cigartuples, reverse=False):
 
 def get_cigartuples_from_string(cigarstring):
     """Extracts operations,lengths as tuples from cigar string"
+
     Returns list of tuples of [operation,length]
     """
     cigartuples = []
@@ -439,6 +455,7 @@ def get_cigartuples_from_string(cigarstring):
 
 def merge_alignments(min_gap, alignments):
     """Combines previously identified alignments if close together
+
     Alignments are combined if within min_gap distance
 
     Returns list of Alignments
@@ -459,6 +476,7 @@ def merge_alignments(min_gap, alignments):
 
 def add_long_reads(read, long_reads, range_min, range_max, min_event_size):
     """Adds a (primary, non-supplementary, long) read to the long_reads list
+
     Read added to long_reads if within the inteval defined by range_min, range_max
     Alignments belonging to the LongRead instance combined if within the min_event_size distance apart
     """
@@ -510,10 +528,12 @@ def add_long_reads(read, long_reads, range_min, range_max, min_event_size):
 
 def get_long_read_plan(read_name, long_reads, range_min, range_max):
     """Create a plan to render a long read
+
     Plan consists of the largest event within the read
         (used to determine the y-axis position of read)
         and the alignment types for plotting each Alignment within
         LongRead.alignments ALIGN, DUP, DEL, INVIN, INVOUT
+
     Returns plan
     """
 
@@ -581,6 +601,7 @@ def get_long_read_plan(read_name, long_reads, range_min, range_max):
 
 def get_long_read_max_gap(read_name, long_reads):
     """Finds the largest gap between alignments in LongRead alignments, plus lengths of the  alignments
+
     Returns the integer max gap
     """
     alignments = []
@@ -599,6 +620,7 @@ def get_long_read_max_gap(read_name, long_reads):
 
 def plot_variant(start, end, sv_type, ax, range_min, range_max):
     """Plots the variant bar at the top of the image
+
     """
     r = [float(int(start) - range_min) / float(range_max - range_min), \
          float(int(end) - range_min) / float(range_max - range_min)]
@@ -664,6 +686,7 @@ def get_pair_event_type(pe_read):
 
 def points_in_window(points):
     """Checks whether these points lie within the window of interest
+
     Points is a list of one start, one end coordinate (ints)
     """
     # if greater than 1 or less than 0, outside the range
@@ -674,6 +697,7 @@ def points_in_window(points):
 
 def plot_pair(pair, y, ax, range_min, range_max):
     """Plots a PairedEnd read at the y-position corresponding to insert size
+
     If read lies outside the range-min or range_max, it is not plotted
     """
 
@@ -881,6 +905,7 @@ def get_split_event_type(split):
 
 def plot_split(split, y, ax, range_min, range_max):
     """Plots a SplitRead at the y-position corresponding to insert size
+
     If read lies outside the range-min or range_max, it is not plotted
     """
     start = split[0]
@@ -1017,6 +1042,7 @@ def plot_coverage(coverage,
                   tracktype,
                   yaxis_label_fontsize):
     """Plots high and low quality coverage for the region
+
     User may specify a preference between stacked and superimposed
         superimposed may cause unexpected behavior if low-quality depth is greater than high
     """
@@ -1062,31 +1088,37 @@ def plot_coverage(coverage,
                          cover_y_highqual, \
                          bottom_fill, \
                          color='darkgrey',
+                         step="pre",
                          alpha=.4)
 
         ax2.fill_between(cover_x, \
                          cover_y_all, \
                          cover_y_highqual,
                          color='grey',
+                         step="pre",
                          alpha=0.15)
+
 
     elif tracktype == "superimpose":
         ax2.fill_between(cover_x, \
                          cover_y_lowqual, \
                          bottom_fill, \
                          color='grey',
+                         step="pre",
                          alpha=.15)
 
         ax2.fill_between(cover_x, \
                          cover_y_highqual, \
                          cover_y_lowqual, \
                          color='darkgrey',
+                         step="pre",
                          alpha=.4)
 
         ax2.fill_between(cover_x, \
                          cover_y_lowqual, \
                          bottom_fill,
                          color='grey',
+                         step="pre",
                          alpha=0.15)
 
     # number of ticks should be 6 if there's one hp, 3 otherwise
@@ -1108,6 +1140,7 @@ def plot_coverage(coverage,
 
 def get_pair_insert_sizes(pairs):
     """Extracts the integer insert sizes for all pairs
+
     Return list of integer insert sizes
     """
     pair_insert_sizes = []
@@ -1123,6 +1156,7 @@ def get_pair_insert_sizes(pairs):
 
 def get_split_insert_size(splits):
     """Extracts the integer gap sizes for all split reads
+
     Return list of integer gap sizes
     """
     split_insert_sizes = []
@@ -1142,6 +1176,7 @@ def get_split_insert_size(splits):
 
 def get_long_read_gap_sizes(long_reads):
     """Extracts the integer gap sizes for all long reads
+
     Return list of integer gap sizes
     """
     long_read_gap_sizes = []
@@ -1155,6 +1190,7 @@ def get_long_read_gap_sizes(long_reads):
 
 def pair(arg):
     """Defines behavior for ArgParse pairs
+
     Pairs must be comma-separated list of two items
     """
     try:
@@ -1169,6 +1205,7 @@ def pair(arg):
 
 def print_arguments(options):
     """Prints out the arguments to samplot as a json object
+
     Used as metadata for PlotCritic
     """
     if options.print_args or options.json_only:
@@ -1423,9 +1460,11 @@ def setup_arguments():
 def set_plot_dimensions(start, end, sv_type, arg_plot_height, arg_plot_width,
                         bams, annotation_files, transcript_file, arg_window):
     """Chooses appropriate dimensions for the plot
+
     Includes the number of samples, whether a variant type is included, and any annotations in height
     Includes the start, end, and window argument in width
     If height and width are chosen by used, these are used instead
+
     Return plot height, width, and window as integers
     """
 
@@ -1457,6 +1496,7 @@ def set_plot_dimensions(start, end, sv_type, arg_plot_height, arg_plot_width,
 def get_read_data(chrom, start, end, bams, reference, min_mqual, coverage_only,
                   long_read_length, same_yaxis_scales, max_depth, z_score):
     """Reads alignment files to extract reads for the region
+
     Region and alignment files given with chrom, start, end, bams
     If CRAM files are used, reference must be provided
     Reads with mapping quality below min_mqual will not be retrieved
@@ -1821,6 +1861,7 @@ def plot_legend(fig, legend_fontsize):
 
 def get_tabix_iter(chrom, pos, end, datafile):
     """Gets an iterator from a tabix BED/GFF/GFF3 file
+
     Used to avoid chrX vs. X notation issues when extracting data from  annotation files
     """
     tbx = pysam.TabixFile(datafile)
