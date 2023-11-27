@@ -819,10 +819,12 @@ def calc_query_pos_from_cigar(cigar, strand):
     qe_pos = 0
     q_len = 0
 
+# this method is used to calculate the query start and end positions
     for op_position in range(len(cigar_ops)):
         op_len = cigar_ops[op_position][0]
         op_type = cigar_ops[op_position][1]
 
+        # if the first op is a hard or soft clip, we need to add the length to the start and end positions
         if op_position == 0 and (op_type == "H" or op_type == "S"):
             qs_pos += op_len
             qe_pos += op_len
@@ -839,6 +841,8 @@ def calc_query_pos_from_cigar(cigar, strand):
 # }}}
 
 # {{{def add_split(read, splits, bam_file, linked_reads):
+# split reads are stored as a list of SplitRead instances
+
 def add_split(read, splits, bam_file, linked_reads, ignore_hp):
     """adds a (primary, non-supplementary) read to the splits list
 
@@ -895,6 +899,8 @@ def add_split(read, splits, bam_file, linked_reads, ignore_hp):
         mapq = int(A[4])
         nm = int(A[5])
         qs_pos, qe_pos = calc_query_pos_from_cigar(cigar, strand)
+        # we don't use the query end position, but we need to calculate it to get the query length
+
         splits[sr.HP][read.query_name].append(
             SplitRead(chrm, pos, pos + qe_pos, strand, qs_pos)
         )
@@ -1236,16 +1242,21 @@ def add_long_reads(bam_file, read, long_reads, min_event_size, ignore_hp):
         not read.is_reverse,
         read.cigartuples,
     )
+    # print(alignments)
+
 
     min_gap = min_event_size
     merged_alignments = merge_alignments(min_gap, alignments)
+    # print(merged_alignments)
 
     read_strand = not read.is_reverse
-
+    should_exit = False
     if read.has_tag("SA"):
         for sa in read.get_tag("SA").split(";"):
             if len(sa) == 0:
                 continue
+            # print(sa)
+
 
             rname, pos, strand, cigar, mapq, nm = sa.split(",")
 
@@ -1258,9 +1269,17 @@ def add_long_reads(bam_file, read, long_reads, min_event_size, ignore_hp):
             )
 
             sa_merged_alignments = merge_alignments(min_gap, sa_alignments)
-
+            # print(sa_merged_alignments)
             if len(sa_merged_alignments) > 0:
+                # print(merged_alignments)
                 merged_alignments += sa_merged_alignments
+                # print(merged_alignments)
+                should_exit = True
+
+    if should_exit:
+        print(merged_alignments)
+
+        # exit("processing LR")
 
     if hp not in long_reads:
         long_reads[hp] = {}
@@ -2493,6 +2512,8 @@ def set_plot_dimensions(
 # }}}
 
 # {{{def get_read_data(ranges,
+# this function gets the read data for the region
+#the split reads are stored in the splits dictionary
 def get_read_data(
     ranges,
     bams,
@@ -2588,6 +2609,7 @@ def get_read_data(
                     continue
 
                 if not coverage_only:
+                    # process long reads
                     if read.query_length >= long_read_length:
                         add_long_reads(bam_file, read, long_reads, min_event_size, ignore_hp)
                     else:
@@ -3428,7 +3450,6 @@ def plot(parser, options, extra_args=None):
     """
     if options.debug:
         logger.setLevel(logging.DEBUG)
-    
     random.seed(options.random_seed)
     if options.print_args or options.json_only:
         print_arguments(options)

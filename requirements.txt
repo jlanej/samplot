@@ -1,5 +1,7 @@
-matplotlib
-numpy
+matplotlib~=3.8.2
+numpy~=1.26.2
 pysam>=0.15
 wget
-Jinja2
+Jinja2~=3.1.2
+
+setuptools~=65.5.1
