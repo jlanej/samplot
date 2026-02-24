@@ -38,7 +38,7 @@ export const DEFAULTS = {
   maxDepth: 1000,
   jitter: 0.08,
   markerSize: 3,
-  coverageTracktype: 'stack',
+  coverageTrackType: 'stack',
   dpi: 1, // device pixel ratio multiplier
   padding: { top: 40, right: 60, bottom: 30, left: 60 },
   sampleHeight: 250,

@@ -44,7 +44,7 @@ class Samplot {
    * @param {number} [config.maxDepth=1000] - Maximum number of reads to display
    * @param {number} [config.minMappingQuality=1] - Minimum mapping quality
    * @param {number} [config.separateMappingQuality=20] - Quality threshold for coverage coloring
-   * @param {string} [config.coverageTracktype='stack'] - Coverage display mode
+   * @param {string} [config.coverageTrackType='stack'] - Coverage display mode
    * @param {number} [config.width] - Canvas width in pixels (default: container width)
    * @param {number} [config.height] - Canvas height in pixels (default: auto-calculated)
    */
