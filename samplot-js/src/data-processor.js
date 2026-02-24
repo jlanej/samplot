@@ -143,7 +143,7 @@ export class DataProcessor {
 
     // Use template_length (TLEN) as insert size — matches Python's outer distance
     // TLEN=0 means unmapped mate, inter-chromosomal, or unavailable — skip these
-    const insertSize = Math.abs(record.template_length || 0);
+    const insertSize = Math.abs(record.template_length ?? 0);
     if (insertSize === 0) return null;
 
     const isReverse = record.isReverseComplemented();
