@@ -103,17 +103,22 @@ export class Renderer {
       1,
     );
 
-    // Find global max insert size for consistent Y axis
-    let globalMaxInsert = 0;
+    // Find global max insert size using 99.5th percentile for robust scaling
+    const allInsertSizes = [];
     for (const sample of sampleData) {
-      for (const p of sample.pairs) {
-        if (p.insertSize > globalMaxInsert) globalMaxInsert = p.insertSize;
-      }
-      for (const s of sample.splits) {
-        if (s.insertSize > globalMaxInsert) globalMaxInsert = s.insertSize;
-      }
+      for (const p of sample.pairs) allInsertSizes.push(p.insertSize);
+      for (const s of sample.splits) allInsertSizes.push(s.insertSize);
     }
-    if (globalMaxInsert === 0) globalMaxInsert = 1000;
+    let globalMaxInsert;
+    if (allInsertSizes.length > 0) {
+      allInsertSizes.sort((a, b) => a - b);
+      const pctIdx = Math.min(
+        Math.floor(allInsertSizes.length * 0.995),
+        allInsertSizes.length - 1,
+      );
+      globalMaxInsert = allInsertSizes[pctIdx];
+    }
+    if (!globalMaxInsert || globalMaxInsert === 0) globalMaxInsert = 1000;
 
     // Draw each sample
     for (let i = 0; i < numSamples; i++) {

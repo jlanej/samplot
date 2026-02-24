@@ -12,7 +12,7 @@ const {
   calculateRanges,
 } = require('../src/utils.js');
 const { DataProcessor } = require('../src/data-processor.js');
-const { COLORS, DEFAULTS, FLAGS } = require('../src/constants.js');
+const { COLORS, DEFAULTS } = require('../src/constants.js');
 
 // ---- Utility tests ----
 
@@ -177,32 +177,44 @@ describe('COLORS', () => {
 describe('DataProcessor', () => {
   /**
    * Create a mock BAM record matching @gmod/bam BamRecord interface.
+   * Uses direct property getters and named methods (not .get()).
    */
   function mockRecord(opts) {
-    const data = {
-      start: opts.start || 0,
-      end: opts.end || (opts.start || 0) + 150,
-      name: opts.name || 'read1',
-      mq: opts.mq !== undefined ? opts.mq : 30,
-      template_length: opts.template_length || 300,
-      SA: opts.SA || undefined,
-    };
+    const flags = opts.flags || 0;
     return {
-      get: (field) => {
-        if (field === 'start') return data.start;
-        if (field === 'end') return data.end;
-        if (field === 'name') return data.name;
-        if (field === 'mq') return data.mq;
-        if (field === 'template_length') return data.template_length;
-        if (field === 'SA') return data.SA;
-        if (field === 'next_pos') return opts.matePos;
-        return undefined;
-      },
-      flags: opts.flags || 0,
-      _next_pos: () => opts.matePos,
-      _next_refid: () => opts.mateRef || 0,
+      get start() { return opts.start || 0; },
+      get end() { return opts.end || (opts.start || 0) + 150; },
+      get name() { return opts.name || 'read1'; },
+      get mq() { return opts.mq !== undefined ? opts.mq : 30; },
+      get template_length() { return opts.template_length || 300; },
+      get next_pos() { return opts.matePos; },
+      get next_refid() { return opts.mateRef || 0; },
+      get flags() { return flags; },
+      get tags() { return opts.SA ? { SA: opts.SA } : {}; },
+      isPaired: () => !!(flags & 0x1),
+      isSegmentUnmapped: () => !!(flags & 0x4),
+      isMateUnmapped: () => !!(flags & 0x8),
+      isReverseComplemented: () => !!(flags & 0x10),
+      isMateReverseComplemented: () => !!(flags & 0x20),
+      isSecondary: () => !!(flags & 0x100),
+      isFailedQc: () => !!(flags & 0x200),
+      isDuplicate: () => !!(flags & 0x400),
+      isSupplementary: () => !!(flags & 0x800),
     };
   }
+
+  // SAM flag constants for test readability
+  const F = {
+    PAIRED: 0x1,
+    UNMAPPED: 0x4,
+    MATE_UNMAPPED: 0x8,
+    REVERSE: 0x10,
+    MATE_REVERSE: 0x20,
+    SECONDARY: 0x100,
+    QC_FAIL: 0x200,
+    DUPLICATE: 0x400,
+    SUPPLEMENTARY: 0x800,
+  };
 
   const region = { chrom: 'chr4', start: 100, end: 300 };
 
@@ -213,27 +225,27 @@ describe('DataProcessor', () => {
     });
 
     test('skips unmapped reads', () => {
-      const record = mockRecord({ flags: FLAGS.UNMAPPED });
+      const record = mockRecord({ flags: F.UNMAPPED });
       expect(proc._shouldSkip(record)).toBe(true);
     });
 
     test('skips QC fail reads', () => {
-      const record = mockRecord({ flags: FLAGS.QC_FAIL });
+      const record = mockRecord({ flags: F.QC_FAIL });
       expect(proc._shouldSkip(record)).toBe(true);
     });
 
     test('skips duplicates', () => {
-      const record = mockRecord({ flags: FLAGS.DUPLICATE });
+      const record = mockRecord({ flags: F.DUPLICATE });
       expect(proc._shouldSkip(record)).toBe(true);
     });
 
     test('skips secondary alignments', () => {
-      const record = mockRecord({ flags: FLAGS.SECONDARY });
+      const record = mockRecord({ flags: F.SECONDARY });
       expect(proc._shouldSkip(record)).toBe(true);
     });
 
     test('skips supplementary alignments', () => {
-      const record = mockRecord({ flags: FLAGS.SUPPLEMENTARY });
+      const record = mockRecord({ flags: F.SUPPLEMENTARY });
       expect(proc._shouldSkip(record)).toBe(true);
     });
 
@@ -243,7 +255,7 @@ describe('DataProcessor', () => {
     });
 
     test('keeps good reads', () => {
-      const record = mockRecord({ flags: FLAGS.PAIRED, mq: 30 });
+      const record = mockRecord({ flags: F.PAIRED, mq: 30 });
       expect(proc._shouldSkip(record)).toBe(false);
     });
   });
@@ -278,7 +290,7 @@ describe('DataProcessor', () => {
         mockRecord({
           start: 100,
           end: 200,
-          flags: FLAGS.PAIRED,
+          flags: F.PAIRED,
           mq: 30,
           matePos: 250,
         }),
@@ -286,7 +298,7 @@ describe('DataProcessor', () => {
           name: 'read2',
           start: 150,
           end: 250,
-          flags: FLAGS.PAIRED,
+          flags: F.PAIRED,
           mq: 30,
           matePos: 100,
         }),
@@ -310,7 +322,7 @@ describe('DataProcessor', () => {
           start: 120,
           end: 270,
           name: 'pair1',
-          flags: FLAGS.PAIRED | FLAGS.MATE_REVERSE, // read forward, mate reverse
+          flags: F.PAIRED | F.MATE_REVERSE, // read forward, mate reverse
           mq: 30,
           matePos: 250,
           template_length: 280,
@@ -330,7 +342,7 @@ describe('DataProcessor', () => {
           start: 120,
           end: 200,
           name: 'split1',
-          flags: FLAGS.PAIRED,
+          flags: F.PAIRED,
           mq: 30,
           matePos: 250,
           SA: 'chr4,250,+,75M,30,0;',
@@ -347,7 +359,7 @@ describe('DataProcessor', () => {
         mockRecord({
           start: 100,
           end: 200,
-          flags: FLAGS.PAIRED,
+          flags: F.PAIRED,
           mq: 30,
           matePos: 250,
         }),
@@ -355,7 +367,7 @@ describe('DataProcessor', () => {
           name: 'lowq',
           start: 100,
           end: 200,
-          flags: FLAGS.PAIRED,
+          flags: F.PAIRED,
           mq: 10,
           matePos: 250,
         }),
@@ -377,7 +389,7 @@ describe('DataProcessor', () => {
             name: `pair${i}`,
             start: 120 + i,
             end: 200 + i,
-            flags: FLAGS.PAIRED | FLAGS.MATE_REVERSE,
+            flags: F.PAIRED | F.MATE_REVERSE,
             mq: 30,
             matePos: 250 + i,
             template_length: 280,
@@ -395,7 +407,7 @@ describe('DataProcessor', () => {
         mockRecord({
           start: 100,
           end: 1200, // 1100bp read, classified as long read
-          flags: FLAGS.PAIRED | FLAGS.MATE_REVERSE,
+          flags: F.PAIRED | F.MATE_REVERSE,
           mq: 30,
           matePos: 250,
           template_length: 1200,

@@ -1,8 +1,14 @@
 /**
  * Processes raw BAM records into classified read data for rendering.
  * Mirrors samplot.py read classification logic.
+ *
+ * @gmod/bam BamRecord API:
+ *   Getters: .flags, .start, .end, .name, .mq, .tags, .next_pos, .next_refid,
+ *            .template_length, .CIGAR, .seq, .strand, .seq_length
+ *   Methods: .isPaired(), .isMateUnmapped(), .isReverseComplemented(),
+ *            .isMateReverseComplemented(), .isSecondary(), .isDuplicate(),
+ *            .isSupplementary(), .isFailedQc(), .isSegmentUnmapped()
  */
-import { FLAGS } from './constants.js';
 import { stripChr } from './utils.js';
 
 export class DataProcessor {
@@ -42,7 +48,7 @@ export class DataProcessor {
       this._addCoverage(record, region, covHigh, covLow);
 
       // Read length check - skip long reads for short-read mode
-      const readLen = (record.get('end') || 0) - (record.get('start') || 0);
+      const readLen = (record.end || 0) - (record.start || 0);
       if (readLen >= this.longReadLength) continue;
 
       // Split reads (SA tag present)
@@ -55,11 +61,8 @@ export class DataProcessor {
       }
 
       // Paired-end reads
-      if (
-        record.flags & FLAGS.PAIRED &&
-        !(record.flags & FLAGS.MATE_UNMAPPED)
-      ) {
-        const readName = record.get('name');
+      if (record.isPaired() && !record.isMateUnmapped()) {
+        const readName = record.name;
         if (!seenPairNames.has(readName)) {
           seenPairNames.add(readName);
           const pairData = this._processPairedRead(record, region);
@@ -90,13 +93,12 @@ export class DataProcessor {
    * @private
    */
   _shouldSkip(record) {
-    const flags = record.flags;
-    if (flags & FLAGS.UNMAPPED) return true;
-    if (flags & FLAGS.QC_FAIL) return true;
-    if (flags & FLAGS.DUPLICATE) return true;
-    if (flags & FLAGS.SECONDARY) return true;
-    if (flags & FLAGS.SUPPLEMENTARY) return true;
-    const mq = record.get('mq') ?? 0;
+    if (record.isSegmentUnmapped()) return true;
+    if (record.isFailedQc()) return true;
+    if (record.isDuplicate()) return true;
+    if (record.isSecondary()) return true;
+    if (record.isSupplementary()) return true;
+    const mq = record.mq ?? 0;
     if (mq < this.minMQ) return true;
     return false;
   }
@@ -106,11 +108,11 @@ export class DataProcessor {
    * @private
    */
   _addCoverage(record, region, covHigh, covLow) {
-    const readStart = record.get('start') ?? 0;
-    const readEnd = record.get('end') ?? 0;
+    const readStart = record.start ?? 0;
+    const readEnd = record.end ?? 0;
     const start = Math.max(readStart, region.start);
     const end = Math.min(readEnd, region.end);
-    const mq = record.get('mq') ?? 0;
+    const mq = record.mq ?? 0;
     const arr = mq >= this.separateMQ ? covHigh : covLow;
 
     for (let pos = start; pos < end; pos++) {
@@ -126,13 +128,13 @@ export class DataProcessor {
    * @private
    */
   _processPairedRead(record, region) {
-    const readStart = record.get('start') ?? 0;
-    const matePos = record._next_pos();
+    const readStart = record.start ?? 0;
+    const matePos = record.next_pos;
     if (matePos === undefined || matePos === null) return null;
 
-    const readEnd = record.get('end') ?? 0;
-    const isReverse = !!(record.flags & FLAGS.REVERSE);
-    const mateIsReverse = !!(record.flags & FLAGS.MATE_REVERSE);
+    const readEnd = record.end ?? 0;
+    const isReverse = record.isReverseComplemented();
+    const mateIsReverse = record.isMateReverseComplemented();
 
     // Get strands in the samplot convention (True = forward)
     const readStrand = !isReverse;
@@ -151,7 +153,7 @@ export class DataProcessor {
     const event = this._getEventType(firstStrand, secondStrand);
 
     // Calculate insert size from template length or positions
-    let insertSize = Math.abs(record.get('template_length') || 0);
+    let insertSize = Math.abs(record.template_length || 0);
     if (insertSize === 0) {
       insertSize = Math.abs(matePos - readStart) + (readEnd - readStart);
     }
@@ -172,9 +174,9 @@ export class DataProcessor {
    * @private
    */
   _processSplitRead(record, saTag, region) {
-    const readStart = record.get('start') ?? 0;
-    const readEnd = record.get('end') ?? 0;
-    const isReverse = !!(record.flags & FLAGS.REVERSE);
+    const readStart = record.start ?? 0;
+    const readEnd = record.end ?? 0;
+    const isReverse = record.isReverseComplemented();
 
     // Parse SA tag: rname,pos,strand,CIGAR,mapQ,NM;...
     const entries = saTag.split(';').filter((s) => s.length > 0);
@@ -235,7 +237,8 @@ export class DataProcessor {
    */
   _getTag(record, tagName) {
     try {
-      return record.get(tagName) ?? null;
+      const tags = record.tags;
+      return tags && tags[tagName] != null ? tags[tagName] : null;
     } catch {
       return null;
     }
