@@ -186,9 +186,10 @@ describe('DataProcessor', () => {
       get end() { return opts.end || (opts.start || 0) + 150; },
       get name() { return opts.name || 'read1'; },
       get mq() { return opts.mq !== undefined ? opts.mq : 30; },
-      get template_length() { return opts.template_length || 300; },
+      get template_length() { return opts.template_length !== undefined ? opts.template_length : 300; },
       get next_pos() { return opts.matePos; },
-      get next_refid() { return opts.mateRef || 0; },
+      get ref_id() { return opts.refId ?? 0; },
+      get next_refid() { return opts.mateRefId ?? opts.refId ?? 0; },
       get flags() { return flags; },
       get tags() { return opts.SA ? { SA: opts.SA } : {}; },
       isPaired: () => !!(flags & 0x1),
@@ -411,6 +412,46 @@ describe('DataProcessor', () => {
           mq: 30,
           matePos: 250,
           template_length: 1200,
+        }),
+      ];
+
+      const result = proc.processReads(records, region);
+      expect(result.pairs.length).toBe(0);
+    });
+
+    test('skips inter-chromosomal pairs', () => {
+      const proc = new DataProcessor();
+      const records = [
+        mockRecord({
+          start: 120,
+          end: 220,
+          name: 'interchrom1',
+          flags: F.PAIRED | F.MATE_REVERSE,
+          mq: 30,
+          matePos: 50000000,
+          refId: 4,
+          mateRefId: 6, // different chromosome
+          template_length: 0,
+        }),
+      ];
+
+      const result = proc.processReads(records, region);
+      expect(result.pairs.length).toBe(0);
+    });
+
+    test('skips pairs with template_length=0', () => {
+      const proc = new DataProcessor();
+      const records = [
+        mockRecord({
+          start: 120,
+          end: 220,
+          name: 'badpair',
+          flags: F.PAIRED | F.MATE_REVERSE,
+          mq: 30,
+          matePos: 120,
+          refId: 4,
+          mateRefId: 4,
+          template_length: 0,
         }),
       ];
 

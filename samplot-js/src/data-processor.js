@@ -125,6 +125,10 @@ export class DataProcessor {
 
   /**
    * Process a paired-end read into plotting data.
+   * Matches Python samplot's get_pair_plan() / get_pair_insert_size() logic:
+   * - Filters inter-chromosomal pairs
+   * - Uses outer distance (abs(template_length)) as insert size
+   * - Skips improperly paired reads with template_length=0
    * @private
    */
   _processPairedRead(record, region) {
@@ -132,7 +136,16 @@ export class DataProcessor {
     const matePos = record.next_pos;
     if (matePos === undefined || matePos === null) return null;
 
+    // Filter inter-chromosomal pairs (Python: first.pos.chrm == second.pos.chrm)
+    if (record.ref_id !== record.next_refid) return null;
+
     const readEnd = record.end ?? 0;
+
+    // Use template_length (TLEN) as insert size — matches Python's outer distance
+    // TLEN=0 means unmapped mate, inter-chromosomal, or unavailable — skip these
+    const insertSize = Math.abs(record.template_length || 0);
+    if (insertSize === 0) return null;
+
     const isReverse = record.isReverseComplemented();
     const mateIsReverse = record.isMateReverseComplemented();
 
@@ -151,12 +164,6 @@ export class DataProcessor {
     }
 
     const event = this._getEventType(firstStrand, secondStrand);
-
-    // Calculate insert size from template length or positions
-    let insertSize = Math.abs(record.template_length || 0);
-    if (insertSize === 0) {
-      insertSize = Math.abs(matePos - readStart) + (readEnd - readStart);
-    }
 
     const pairStart = Math.min(readStart, matePos);
     const pairEnd = Math.max(readEnd, matePos);
